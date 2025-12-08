@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
@@ -20,6 +21,7 @@ import com.winnguyen1905.auth.common.constant.RegionPartition;
 import com.winnguyen1905.auth.core.model.response.CustomUserDetails;
 import com.winnguyen1905.auth.core.service.GeoLocationService;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 @PropertySource("classpath:application.yaml")
@@ -53,34 +55,36 @@ public class JwtUtils {
         .build();
   }
   private String getClientIp(ServerHttpRequest request) {
-    String xForwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
-    if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-        return xForwardedFor.split(",")[0].trim();
+    try {
+      String xForwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
+      if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+          return xForwardedFor.split(",")[0].trim();
+      }
+      var remoteAddress = request.getRemoteAddress();
+      if (remoteAddress != null && remoteAddress.getAddress() != null) {
+        return remoteAddress.getAddress().getHostAddress();
+      }
+      return "unknown";
+    } catch (Exception e) {
+      // If we can't access headers (they might be read-only), return a default
+      return "unknown";
     }
-    return request.getRemoteAddress() != null
-            ? request.getRemoteAddress().getAddress().getHostAddress()
-            : "unknown";
-}
+  }
 
   public TokenPair createTokenPair(CustomUserDetails userDetails, ServerWebExchange exchange) {
-    var request = exchange.getRequest();
-    String ipAddress = getClientIp(request);
+    try {
+      var request = exchange.getRequest();
+      String ipAddress = getClientIp(request);
+      RegionPartition region = geoLocationService.getRegionFromIp(ipAddress);
+      return createTokenPairWithRegion(userDetails, region);
+    } catch (Exception e) {
+      log.warn("Failed to get client IP from exchange, using default region: {}", e.getMessage());
+      // Fallback to default region if we can't access the exchange properly
+      return createTokenPairWithRegion(userDetails, RegionPartition.US);
+    }
+  }
 
-    // // Check for X-Forwarded-For header (used by proxies/load balancers)
-    // var forwardedFor = request.getHeaders().getFirst("X-Forwarded-For");
-    // if (forwardedFor != null && !forwardedFor.isEmpty()) {
-    //   // X-Forwarded-For may contain multiple IPs; the first one is the client's
-    //   ipAddress = forwardedFor.split(",")[0].trim();
-    // } else {
-    //   // Fallback to remote address if no X-Forwarded-For header
-    //   var remoteAddress = request.getRemoteAddress();
-    //   if (remoteAddress != null) {
-    //     ipAddress = remoteAddress.getAddress().getHostAddress();
-    //   }
-    // }
-
-    RegionPartition region = geoLocationService.getRegionFromIp(ipAddress);
-
+  public TokenPair createTokenPairWithRegion(CustomUserDetails userDetails, RegionPartition region) {
     Instant now = Instant.now(),
         accessTokenValidity = now.plus(Long.parseLong(jwtAccessTokenExpiration), ChronoUnit.SECONDS),
         refreshTokenValidity = now.plus(Long.parseLong(jwtRefreshTokenExpiration), ChronoUnit.SECONDS);
