@@ -52,29 +52,13 @@ spring:
       #     - classpath:sql/init.sql
       mode: always
 
-  # OAuth2 and Security Configuration
+  # OAuth2 Resource Server Configuration with Keycloak JWT validation
   security:
     oauth2:
-      client:
-        registration:
-          keycloak:
-            client-id: auth-service
-            client-secret: ${KEYCLOAK_CLIENT_SECRET:your-client-secret}
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
-            scope: openid,profile,email
-        provider:
-          keycloak:
-            issuer-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}
-            authorization-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}/protocol/openid-connect/auth
-            token-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}/protocol/openid-connect/token
-            user-info-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}/protocol/openid-connect/userinfo
-            jwk-set-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}/protocol/openid-connect/certs
-            user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}
-          jwk-set-uri: ${KEYCLOAK_SERVER_URL:http://localhost:8080}/realms/${KEYCLOAK_REALM:microservice}/protocol/openid-connect/certs
+          issuer-uri: http://localhost:8087/realms/master
+          jwk-set-uri: http://localhost:8087/realms/master/protocol/openid-connect/certs
 
 logging:
   level:
@@ -97,11 +81,11 @@ jwt:
 
 # Keycloak Configuration
 keycloak:
-  server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
-  realm: ${KEYCLOAK_REALM:microservice}
-  client-id: ${KEYCLOAK_CLIENT_ID:auth-service}
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:your-client-secret}
+  server-url: http://localhost:8087
+  realm: master
+  client-id: admin-cli
+  client-secret: ""
   admin:
-    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
-    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
-  direct-access-grants-enabled: true
+    username: admin
+    password: admin
+  direct-access-grants-enabled: true # Enable Keycloak for OAuth2 integration

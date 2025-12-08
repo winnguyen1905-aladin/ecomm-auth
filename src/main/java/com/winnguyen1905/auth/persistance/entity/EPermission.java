@@ -43,10 +43,10 @@ public class EPermission {
   @Column(nullable = true, name = "module")
   private String module;
 
-  @Column(nullable = true)
+  @Column(nullable = true, name = "left_val")
   private Integer left;
 
-  @Column(nullable = true)
+  @Column(nullable = true, name = "right_val")
   private Integer right;
 
   @ManyToMany(mappedBy = "permissions")
